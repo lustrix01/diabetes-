@@ -1,0 +1,208 @@
+/* =============================================
+   MULTIVARIATE REGRESSION — style.css
+   Clean academic / spreadsheet aesthetic
+   ============================================= */
+
+:root {
+  --white: #ffffff;
+  --off: #f7f8fa;
+  --light: #eef1f6;
+  --border: #c8cdd6;
+  --border-dark: #a0a8b5;
+  --navy: #1a2540;
+  --navy-mid: #2d3e6a;
+  --teal: #0d6e56;
+  --teal-light: #e6f4f1;
+  --yellow: #fff9c4;
+  --yellow-border: #f5d000;
+  --red: #c0392b;
+  --text: #1a1a2e;
+  --text-mid: #3d4a5c;
+  --text-muted: #6b7a8d;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Barlow', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--off); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+
+.container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* HEADER */
+.site-header { background: var(--navy); color: #fff; padding: 32px 0 28px; border-bottom: 4px solid var(--yellow-border); }
+.site-title { font-size: 1.9rem; font-weight: 700; letter-spacing: 0.01em; }
+.site-sub { font-family: var(--mono); font-size: 12px; color: #a0b4d0; margin-top: 4px; letter-spacing: 0.1em; }
+
+/* SECTIONS */
+.section-block { margin: 28px 0; }
+.sec-heading {
+  background: var(--navy); color: #fff; font-weight: 700; font-size: 13px;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  padding: 10px 18px; display: inline-block; margin-bottom: 0;
+}
+.content-box {
+  background: var(--white); border: 1px solid var(--border);
+  border-top: none; padding: 24px 28px;
+}
+.content-box p { color: var(--text-mid); margin-bottom: 12px; }
+.content-box p:last-child { margin-bottom: 0; }
+strong { color: var(--text); }
+
+/* FORMULA BOX — yellow like PDF */
+.formula-box {
+  background: var(--yellow); border: 1.5px solid var(--yellow-border);
+  padding: 12px 20px; margin: 14px 0; text-align: center;
+  font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text);
+  border-radius: 2px;
+}
+
+/* DATASET DESC TABLE */
+.desc-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+.desc-table th { background: var(--navy-mid); color: #fff; padding: 8px 14px; text-align: left; font-weight: 600; }
+.desc-table td { padding: 7px 14px; border-bottom: 1px solid var(--light); }
+.desc-table tr.out-row td { background: var(--teal-light); font-weight: 600; color: var(--teal); }
+.desc-table tbody tr:hover td { background: var(--light); }
+
+/* UPLOAD */
+.upload-area {
+  border: 2px dashed var(--border-dark); background: var(--off);
+  padding: 40px 20px; text-align: center; cursor: pointer;
+  margin-top: 16px; transition: background 0.2s, border-color 0.2s;
+}
+.upload-area:hover, .upload-area.dragover { background: var(--teal-light); border-color: var(--teal); }
+.upload-icon { font-size: 2.2rem; margin-bottom: 10px; }
+.upload-area p { color: var(--text-mid); margin-bottom: 14px; }
+.btn-upload {
+  background: var(--navy); color: #fff; border: none; padding: 10px 26px;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; letter-spacing: 0.05em; transition: background 0.2s;
+}
+.btn-upload:hover { background: var(--navy-mid); }
+.upload-msg { margin-top: 12px; padding: 10px 16px; font-family: var(--mono); font-size: 12px; }
+.upload-msg.ok  { background: var(--teal-light); border: 1px solid var(--teal); color: var(--teal); }
+.upload-msg.err { background: #fdecea; border: 1px solid var(--red); color: var(--red); }
+
+/* TABLE CONTROLS */
+.tbl-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); }
+.tbl-controls select { border: 1px solid var(--border); padding: 4px 8px; font-family: var(--sans); font-size: 13px; background: var(--white); cursor: pointer; }
+.tbl-scroll { overflow-x: auto; }
+
+/* DATA TABLE */
+.data-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 700px; }
+.data-tbl th { background: var(--navy-mid); color: #fff; padding: 8px 10px; text-align: center; font-weight: 600; white-space: nowrap; border-right: 1px solid #4a6080; }
+.data-tbl td { padding: 6px 10px; border-bottom: 1px solid var(--light); text-align: center; color: var(--text-mid); white-space: nowrap; border-right: 1px solid var(--light); }
+.data-tbl .col-y { background: var(--teal-light); font-weight: 600; color: var(--teal); }
+.data-tbl .row-mean td { background: var(--yellow); font-weight: 700; border-top: 2px solid var(--yellow-border); }
+.data-tbl tbody tr:hover td { background: #f0f4ff; }
+
+/* TRAIN BUTTON */
+.btn-train {
+  background: var(--navy); color: #fff; border: none;
+  padding: 11px 30px; font-family: var(--sans); font-size: 14px; font-weight: 600;
+  cursor: pointer; margin: 16px 0; letter-spacing: 0.05em; transition: background 0.2s;
+}
+.btn-train:hover { background: var(--navy-mid); }
+.btn-train:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* COMPUTATION TABLES (per feature) */
+.comp-block { margin-top: 28px; }
+.comp-title {
+  background: var(--light); border: 1px solid var(--border); border-bottom: none;
+  padding: 8px 14px; font-weight: 700; font-size: 13px; color: var(--navy);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.comp-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.comp-tbl th { background: var(--light); border: 1px solid var(--border); padding: 7px 12px; text-align: center; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.comp-tbl td { border: 1px solid var(--border); padding: 6px 12px; text-align: center; color: var(--text-mid); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.comp-tbl .row-mean td { background: var(--yellow); font-weight: 700; }
+.comp-tbl .row-total td { background: var(--light); font-weight: 700; color: var(--navy); }
+.comp-tbl td:first-child { font-family: var(--sans); }
+
+.slope-badge {
+  background: var(--yellow); border: 1.5px solid var(--yellow-border);
+  padding: 6px 18px; font-family: var(--mono); font-weight: 700; font-size: 15px;
+  color: var(--text); min-width: 80px; text-align: center;
+}
+.intercept-row {
+  background: var(--off); border: 1px solid var(--border); border-top: none;
+  padding: 8px 14px; font-size: 12.5px; color: var(--text-mid);
+  font-family: var(--mono);
+}
+
+/* OVERALL INTERCEPT */
+.overall-box {
+  background: var(--white); border: 1px solid var(--border);
+  margin-top: 32px; overflow: hidden;
+}
+.overall-title {
+  background: var(--light); padding: 9px 16px; font-weight: 700;
+  font-size: 13px; text-align: center; border-bottom: 1px solid var(--border); color: var(--navy);
+}
+.overall-inner { padding: 20px; text-align: center; }
+.final-model-box {
+  background: var(--white); border: 1px solid var(--border); margin-top: 24px; overflow: hidden;
+}
+.final-model-title {
+  background: var(--light); padding: 9px 16px; font-weight: 700;
+  font-size: 13px; text-align: center; border-bottom: 1px solid var(--border); color: var(--navy);
+}
+.final-model-inner { padding: 20px; text-align: center; }
+
+/* ACCURACY / PREDICTIONS */
+.accuracy-block { margin-top: 32px; }
+.accuracy-header {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--navy-mid); color: #fff; padding: 10px 16px; font-weight: 700; font-size: 13px;
+}
+.accuracy-stats { display: flex; gap: 32px; padding: 16px; background: var(--off); border: 1px solid var(--border); border-top: none; }
+.stat-item { text-align: center; }
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 2px; }
+.stat-value { font-family: var(--mono); font-size: 1.3rem; font-weight: 700; color: var(--navy); }
+.pred-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pred-tbl th { background: var(--light); border: 1px solid var(--border); padding: 7px 12px; text-align: center; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.pred-tbl td { border: 1px solid var(--light); padding: 6px 12px; text-align: center; color: var(--text-mid); font-size: 12px; }
+.pred-tbl td.match-yes { color: var(--teal); font-weight: 700; }
+.pred-tbl td.match-no  { color: var(--red);  font-weight: 700; }
+.pred-tbl .raw-score { font-family: var(--mono); font-size: 11px; }
+.tbl-show-ctrl { padding: 8px 0; font-size: 12px; color: var(--text-muted); }
+.tbl-show-ctrl select { border: 1px solid var(--border); padding: 3px 7px; font-size: 12px; }
+
+/* INPUT TABLE */
+.input-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.input-table td { padding: 8px 12px; vertical-align: top; }
+.input-table label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px; }
+.input-table input { width: 100%; border: 1px solid var(--border); padding: 8px 10px; font-family: var(--mono); font-size: 13px; background: var(--off); color: var(--text); transition: border-color 0.2s; }
+.input-table input:focus { outline: none; border-color: var(--navy); background: #fff; }
+
+/* PREDICTION RESULT */
+.pred-formula-box {
+  background: var(--yellow); border: 1.5px solid var(--yellow-border);
+  padding: 14px 20px; margin: 18px 0 10px; font-family: var(--mono); font-size: 13px;
+  line-height: 1.8; color: var(--text);
+}
+.pred-answer {
+  background: var(--teal-light); border: 2px solid var(--teal);
+  padding: 16px 24px; text-align: center; font-size: 1.05rem; color: var(--teal);
+}
+.pred-answer .ans-number { font-family: var(--mono); font-size: 2rem; font-weight: 700; display: block; }
+.pred-answer .ans-label  { font-size: 0.95rem; font-weight: 600; }
+
+/* FOOTER */
+.site-footer { background: var(--navy); color: #8090a8; text-align: center; padding: 18px 0; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; margin-top: 48px; }
+
+/* UTILS */
+.hidden { display: none; }
+
+/* SHOW MORE / LESS BUTTON */
+.show-more-wrap { text-align: center; padding: 6px 0; border: 1px solid var(--border); border-top: none; background: var(--off); }
+.btn-show-more {
+  background: none; border: 1px solid var(--border-dark); color: var(--navy-mid);
+  padding: 5px 20px; font-family: var(--sans); font-size: 12px; font-weight: 600;
+  cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s;
+}
+.btn-show-more:hover { background: var(--light); }
+
+/* PRED TABLE SHOW CTRL */
+.tbl-show-ctrl { padding: 8px 14px; border: 1px solid var(--border); border-top: none; background: var(--off); font-size: 12px; color: var(--text-muted); }
+.tbl-show-ctrl select { border: 1px solid var(--border); padding: 3px 8px; font-size: 12px; background: var(--white); }

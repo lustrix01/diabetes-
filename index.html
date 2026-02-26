@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multivariate Regression — Diabetes Prediction</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- TITLE -->
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">Multivariate Regression Analysis</h1>
+      <p class="site-sub">Diabetes Prediction System</p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- 1. INTRODUCTION -->
+    <section class="section-block" id="sec-intro">
+      <div class="sec-heading">Introduction</div>
+      <div class="content-box">
+        <p>
+          This system computes a <strong>Multi-Variate Regression Model</strong> for diabetes prediction using the manual slope-intercept method.
+          For each input feature (x), the model computes the slope <strong>m</strong> using:
+        </p>
+        <div class="formula-box">
+          m = Σ(x − x̄)(y − ȳ) &nbsp;/&nbsp; Σ(x − x̄)²
+        </div>
+        <p>
+          Each feature produces its own y-intercept (<strong>b</strong>). The overall intercept is the average of all individual intercepts.
+          The final model is:
+        </p>
+        <div class="formula-box">
+          ŷ = m₁x₁ + m₂x₂ + m₃x₃ + m₄x₄ + m₅x₅ + m₆x₆ + m₇x₇ + m₈x₈ + b
+        </div>
+        <p>The <strong>Outcome</strong> column is the target (y). All other 8 columns are inputs (x₁–x₈).</p>
+      </div>
+    </section>
+
+    <!-- 2. DATASET DESCRIPTION -->
+    <section class="section-block" id="sec-dataset">
+      <div class="sec-heading">Dataset Description</div>
+      <div class="content-box">
+        <p>The dataset contains <strong>9 columns</strong>. The first 8 are input features; the 9th column (Outcome) is the output.</p>
+        <table class="desc-table">
+          <thead><tr><th>#</th><th>Column</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Pregnancies</td><td>Input (x₁)</td></tr>
+            <tr><td>2</td><td>Glucose</td><td>Input (x₂)</td></tr>
+            <tr><td>3</td><td>BloodPressure</td><td>Input (x₃)</td></tr>
+            <tr><td>4</td><td>SkinThickness</td><td>Input (x₄)</td></tr>
+            <tr><td>5</td><td>Insulin</td><td>Input (x₅)</td></tr>
+            <tr><td>6</td><td>BMI</td><td>Input (x₆)</td></tr>
+            <tr><td>7</td><td>DiabetesPedigreeFunction</td><td>Input (x₇)</td></tr>
+            <tr><td>8</td><td>Age</td><td>Input (x₈)</td></tr>
+            <tr class="out-row"><td>9</td><td>Outcome</td><td>Output (y) — 0 or 1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. CSV UPLOAD -->
+    <section class="section-block" id="sec-upload">
+      <div class="sec-heading">CSV Upload</div>
+      <div class="content-box">
+        <p>Upload the diabetes dataset CSV file. The system will read all 9 columns and store the data in memory.</p>
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">📁</div>
+          <p>Drag &amp; drop your <strong>.csv</strong> file here, or click the button below</p>
+          <input type="file" id="csvFile" accept=".csv" hidden />
+          <button class="btn-upload" onclick="document.getElementById('csvFile').click()">Choose CSV File</button>
+        </div>
+        <div id="uploadMsg" class="upload-msg hidden"></div>
+      </div>
+    </section>
+
+    <!-- 4. DATA TABLE PREVIEW -->
+    <section class="section-block hidden" id="sec-table">
+      <div class="sec-heading">Historical Data</div>
+      <div class="content-box">
+        <div class="tbl-controls">
+          <span id="lblRowCount"></span>
+          <span>Show: <select id="selRows" onchange="renderDataTable()">
+            <option value="10" selected>10 rows</option>
+            <option value="25">25 rows</option>
+            <option value="50">50 rows</option>
+            <option value="all">All rows</option>
+          </select></span>
+        </div>
+        <div class="tbl-scroll" id="dataTableArea"></div>
+      </div>
+    </section>
+
+    <!-- 5. MODEL TRAINING -->
+    <section class="section-block hidden" id="sec-train">
+      <div class="sec-heading">Crafting the Multi-Variate Model</div>
+      <div class="content-box">
+        <p>Click <strong>Compute Model</strong> to calculate all slopes and intercepts using the manual multivariate regression method shown above.</p>
+        <button class="btn-train" id="btnTrain" onclick="computeModel()">▶ Compute Model</button>
+
+        <!-- Per-feature computation tables rendered here -->
+        <div id="computationArea"></div>
+
+        <!-- Overall intercept + final model -->
+        <div id="finalModelArea" class="hidden"></div>
+
+        <!-- Accuracy / predictions table -->
+        <div id="accuracyArea" class="hidden"></div>
+      </div>
+    </section>
+
+    <!-- 6. PREDICTION — LAST -->
+    <section class="section-block hidden" id="sec-predict">
+      <div class="sec-heading">Prediction</div>
+      <div class="content-box">
+        <p>Enter patient values to get a diabetes prediction using the computed model.</p>
+        <table class="input-table">
+          <tbody>
+            <tr>
+              <td><label>Pregnancies (x₁)</label><input type="number" id="p1" placeholder="e.g. 2" /></td>
+              <td><label>Glucose (x₂)</label><input type="number" id="p2" placeholder="e.g. 120" /></td>
+              <td><label>BloodPressure (x₃)</label><input type="number" id="p3" placeholder="e.g. 70" /></td>
+              <td><label>SkinThickness (x₄)</label><input type="number" id="p4" placeholder="e.g. 20" /></td>
+            </tr>
+            <tr>
+              <td><label>Insulin (x₅)</label><input type="number" id="p5" placeholder="e.g. 80" /></td>
+              <td><label>BMI (x₆)</label><input type="number" id="p6" placeholder="e.g. 32.5" step="0.1" /></td>
+              <td><label>DiabetesPedigree (x₇)</label><input type="number" id="p7" placeholder="e.g. 0.627" step="0.001" /></td>
+              <td><label>Age (x₈)</label><input type="number" id="p8" placeholder="e.g. 33" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <button class="btn-train" onclick="makePrediction()">🔍 Predict</button>
+
+        <div id="predResult" class="hidden">
+          <div class="pred-formula-box" id="predFormula"></div>
+          <div class="pred-answer" id="predAnswer"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">Multi-Variate Regression Analysis &nbsp;·&nbsp; Diabetes Prediction</div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
