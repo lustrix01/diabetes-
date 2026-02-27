@@ -14,8 +14,15 @@ let dataset       = [];
 let modelSlopes   = [];
 let modelIntercepts = [];
 let modelB        = 0;
-let dynamicThreshold = 0.5;
 let modelTrained  = false;
+
+// Sigmoid function — squeezes any value into 0–1 range
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+// We center raw scores around 0 before sigmoid so predictions spread across 0 and 1
+// rawMean is computed after model training
+let rawMean = 0;
+let rawStd  = 1;
 
 // ── per-feature full row data (for show-more) ──
 let featureRows = [];   // featureRows[fi] = array of row objects
@@ -166,10 +173,6 @@ function computeModel() {
   // Overall intercept — average of all b's
   modelB = modelIntercepts.reduce((s,v) => s+v, 0) / modelIntercepts.length;
 
-  // Dynamic threshold = mean of all raw scores
-  const rawScores = dataset.map(r => FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB);
-  dynamicThreshold = rawScores.reduce((s,v) => s+v, 0) / rawScores.length;
-
   // Overall intercept box
   const bLabels = modelIntercepts.map((_,i) => `b${SUB[i]}`).join(' + ');
   const bValues = modelIntercepts.map(b => fmt(b)).join(' + ');
@@ -195,7 +198,7 @@ function computeModel() {
       <div class="formula-box">
         ŷ = m₁x₁ + m₂x₂ + m₃x₃ + m₄x₄ + m₅x₅ + m₆x₆ + m₇x₇ + m₈x₈ + b<br><br>
         ŷ = ${eqParts} + ${fmt(modelB)}<br><br>
-        <small style="color:#555">Dynamic Threshold (mean raw score) = <strong>${fmt(dynamicThreshold)}</strong> — if ŷ ≥ threshold → Predicted 1 (Diabetes), else → 0</small>
+        <small style="color:#555">Sigmoid applied to ŷ → σ(ŷ) = 1 / (1 + e<sup>−ŷ</sup>) — if σ(ŷ) ≥ 0.5 → Predicted 1 (Diabetes), else → 0</small>
       </div>
     </div>
   </div>`;
@@ -203,6 +206,11 @@ function computeModel() {
   const finalArea = document.getElementById('finalModelArea');
   finalArea.innerHTML = finalHtml;
   show('finalModelArea');
+
+  // Compute mean and std of raw scores so we can center before sigmoid
+  const allRaw = dataset.map(r => FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB);
+  rawMean = allRaw.reduce((s,v) => s+v, 0) / allRaw.length;
+  rawStd  = Math.sqrt(allRaw.reduce((s,v) => s + (v - rawMean)**2, 0) / allRaw.length) || 1;
 
   buildAccuracyTable();
 
@@ -309,9 +317,10 @@ function toggleFeatureRows(fi, btn) {
 function buildAccuracyTable() {
   const preds = dataset.map(r => {
     const raw    = FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB;
-    const pred   = raw >= dynamicThreshold ? 1 : 0;
+    const prob   = sigmoid((raw - rawMean) / rawStd);
+    const pred   = prob >= 0.5 ? 1 : 0;
     const actual = r['Outcome'];
-    return { raw, pred, actual, match: pred === actual };
+    return { raw, prob, pred, actual, match: pred === actual };
   });
 
   window._preds = preds;
@@ -328,7 +337,7 @@ function buildAccuracyTable() {
       <div class="stat-item"><div class="stat-label">Correct</div><div class="stat-value">${correct}</div></div>
       <div class="stat-item"><div class="stat-label">Incorrect</div><div class="stat-value">${preds.length - correct}</div></div>
       <div class="stat-item"><div class="stat-label">Accuracy</div><div class="stat-value">${acc}%</div></div>
-      <div class="stat-item"><div class="stat-label">Threshold Used</div><div class="stat-value" style="font-size:1rem">${fmt(dynamicThreshold)}</div></div>
+      <div class="stat-item"><div class="stat-label">Threshold</div><div class="stat-value" style="font-size:1rem">σ ≥ 0.5</div></div>
     </div>
     <div class="tbl-show-ctrl">
       Show rows: <select onchange="filterPredTable(this.value)">
@@ -359,7 +368,7 @@ function renderPredTable(rows) {
   let html = `<table class="pred-tbl"><thead><tr>
     <th>#</th>`;
   FEATURES.forEach((f,i) => html += `<th>${f}<br><small>(x${SUB[i]})</small></th>`);
-  html += `<th>Actual<br><small>(y)</small></th><th>Raw Score<br><small>(ŷ)</small></th><th>Predicted</th><th>Match</th>
+  html += `<th>Actual<br><small>(y)</small></th><th>Raw Score<br><small>(ŷ)</small></th><th>Sigmoid<br><small>σ(ŷ)</small></th><th>Predicted</th><th>Match</th>
   </tr></thead><tbody>`;
 
   rows.forEach((p) => {
@@ -369,6 +378,7 @@ function renderPredTable(rows) {
     FEATURES.forEach(f => html += `<td>${dataset[idx][f]}</td>`);
     html += `<td><strong>${p.actual}</strong></td>`;
     html += `<td class="raw-score">${p.raw.toFixed(4)}</td>`;
+    html += `<td class="raw-score">${p.prob.toFixed(4)}</td>`;
     html += `<td><strong>${p.pred}</strong></td>`;
     html += `<td class="${p.match ? 'match-yes' : 'match-no'}">${p.match ? '✔ Yes' : '✗ No'}</td>`;
     html += `</tr>`;
@@ -387,9 +397,9 @@ function makePrediction() {
   if (vals.some(isNaN)) { alert('Please fill in all 8 input fields.'); return; }
 
   const raw     = FEATURES.reduce((s,_,i) => s + modelSlopes[i] * vals[i], 0) + modelB;
-  const outcome = raw >= dynamicThreshold ? 1 : 0;
+  const prob    = sigmoid((raw - rawMean) / rawStd);
+  const outcome = prob >= 0.5 ? 1 : 0;
 
-  // Step-by-step solution like PDF
   const parts   = FEATURES.map((f,i) => `(${fmt(modelSlopes[i])})(${vals[i]})`);
   const numeric = FEATURES.map((_,i) => (modelSlopes[i] * vals[i]).toFixed(4));
 
@@ -398,12 +408,14 @@ function makePrediction() {
   formulaHtml += `ŷ = ${parts.join(' + ')} + ${fmt(modelB)}<br><br>`;
   formulaHtml += `ŷ = ${numeric.join(' + ')} + ${fmt(modelB)}<br><br>`;
   formulaHtml += `<strong>ŷ = ${raw.toFixed(4)}</strong><br><br>`;
-  formulaHtml += `<small>Dynamic Threshold = ${fmt(dynamicThreshold)} &nbsp;→&nbsp; Since ŷ ${raw >= dynamicThreshold ? '≥' : '<'} threshold, Predicted = <strong>${outcome}</strong></small>`;
+  formulaHtml += `Centered z = (${raw.toFixed(4)} − ${rawMean.toFixed(4)}) / ${rawStd.toFixed(4)} = <strong>${((raw-rawMean)/rawStd).toFixed(4)}</strong><br><br>`;
+  formulaHtml += `σ(z) = 1 / (1 + e<sup>−z</sup>) = <strong>${prob.toFixed(4)}</strong><br><br>`;
+  formulaHtml += `<small>Since σ(z) = ${prob.toFixed(4)} ${prob >= 0.5 ? '≥' : '<'} 0.5 → Predicted = <strong>${outcome}</strong></small>`;
 
   document.getElementById('predFormula').innerHTML = formulaHtml;
   document.getElementById('predAnswer').innerHTML  = `
     <span class="ans-number">${outcome}</span>
-    <span class="ans-label">${outcome === 0 ? '= No Diabetes' : '= With Diabetes'}</span>
+    <span class="ans-label">${outcome === 0 ? '= No Diabetes' : '= Has Diabetes'}</span>
   `;
   show('predResult');
 }

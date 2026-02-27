@@ -19,7 +19,7 @@
 
   <main class="container">
 
-    <!-- 1. INTRODUCTION -->
+    <!-- INTRODUCTION -->
     <section class="section-block" id="sec-intro">
       <div class="sec-heading">Introduction</div>
       <div class="content-box">
@@ -41,7 +41,7 @@
       </div>
     </section>
 
-    <!-- 2. DATASET DESCRIPTION -->
+    <!-- DATASET DESCRIPTION -->
     <section class="section-block" id="sec-dataset">
       <div class="sec-heading">Dataset Description</div>
       <div class="content-box">
@@ -63,7 +63,7 @@
       </div>
     </section>
 
-    <!-- 3. CSV UPLOAD -->
+    <!-- CSV UPLOAD -->
     <section class="section-block" id="sec-upload">
       <div class="sec-heading">CSV Upload</div>
       <div class="content-box">
@@ -78,7 +78,7 @@
       </div>
     </section>
 
-    <!-- 4. DATA TABLE PREVIEW -->
+    <!-- DATA TABLE PREVIEW -->
     <section class="section-block hidden" id="sec-table">
       <div class="sec-heading">Historical Data</div>
       <div class="content-box">
@@ -95,25 +95,24 @@
       </div>
     </section>
 
-    <!-- 5. MODEL TRAINING -->
+    <!-- MODEL TRAINING -->
     <section class="section-block hidden" id="sec-train">
       <div class="sec-heading">Crafting the Multi-Variate Model</div>
       <div class="content-box">
         <p>Click <strong>Compute Model</strong> to calculate all slopes and intercepts using the manual multivariate regression method shown above.</p>
         <button class="btn-train" id="btnTrain" onclick="computeModel()">▶ Compute Model</button>
 
-        <!-- Per-feature computation tables rendered here -->
         <div id="computationArea"></div>
 
-        <!-- Overall intercept + final model -->
+      
         <div id="finalModelArea" class="hidden"></div>
 
-        <!-- Accuracy / predictions table -->
+   
         <div id="accuracyArea" class="hidden"></div>
       </div>
     </section>
 
-    <!-- 6. PREDICTION — LAST -->
+    <!-- PREDICTION -->
     <section class="section-block hidden" id="sec-predict">
       <div class="sec-heading">Prediction</div>
       <div class="content-box">
