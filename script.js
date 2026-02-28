@@ -1,399 +1,235 @@
 
-const FEATURES = [
-  'Pregnancies','Glucose','BloodPressure','SkinThickness',
-  'Insulin','BMI','DiabetesPedigreeFunction','Age'
-];
+
+const FEATURES = ['Pregnancies','Glucose','BloodPressure','SkinThickness','Insulin','BMI','DiabetesPedigreeFunction','Age'];
 const SUB  = ['₁','₂','₃','₄','₅','₆','₇','₈'];
-const XBAR = ['x̄₁','x̄₂','x̄₃','x̄₄','x̄₅','x̄₆','x̄₇','x̄₈'];
 
-let dataset       = [];
-let modelSlopes   = [];
+let dataset = [];
+let modelSlopes = [];
 let modelIntercepts = [];
-let modelB        = 0;
-let modelTrained  = false;
-
-
-function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
-
-
+let modelB = 0;
+let modelTrained = false;
 let rawMean = 0;
-let rawStd  = 1;
+let rawStd = 1;
 
-let featureRows = [];   
 
-//  CSV UPLOAD
-const fileInput  = document.getElementById('csvFile');
-const uploadArea = document.getElementById('uploadArea');
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function fmt(n) { return n.toFixed(4); }
 
-fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
-uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+// MANUAL CSV LOADING 
+document.getElementById('csvFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-function handleFile(file) {
-  if (!file) return;
-  if (!file.name.endsWith('.csv')) { showMsg('err','❌ Please upload a .csv file.'); return; }
-  const reader = new FileReader();
-  reader.onload = e => parseCSV(e.target.result, file.name);
-  reader.readAsText(file);
-}
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const lines = event.target.result.trim().split('\n').map(l => l.trim()).filter(Boolean);
+        const header = lines[0].split(',').map(h => h.trim());
+        dataset = [];
 
-function parseCSV(text, name) {
-  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 2) { showMsg('err','❌ CSV file is empty or has no data rows.'); return; }
-  const header = lines[0].split(',').map(h => h.trim());
-  if (header.length < 9) { showMsg('err',`❌ Expected 9 columns, found ${header.length}.`); return; }
+        for (let i = 1; i < lines.length; i++) {
+            const vals = lines[i].split(',').map(v => parseFloat(v.trim()));
+            if (vals.length < 9 || vals.some(isNaN)) continue;
+            const row = {};
+            header.forEach((h, j) => row[h] = vals[j]);
+            dataset.push(row);
+        }
 
-  dataset = [];
-  for (let i = 1; i < lines.length; i++) {
-    const vals = lines[i].split(',').map(v => parseFloat(v.trim()));
-    if (vals.length < 9 || vals.some(isNaN)) continue;
-    const row = {};
-    header.forEach((h,j) => row[h] = vals[j]);
-    dataset.push(row);
-  }
-  if (dataset.length === 0) { showMsg('err','❌ No valid numeric rows found.'); return; }
+        document.getElementById('uploadMsg').innerHTML = `<div class="upload-msg ok">✔ ${dataset.length} rows loaded.</div>`;
+        document.getElementById('uploadMsg').classList.remove('hidden');
+        show('sec-table'); show('sec-train');
+        renderDataTable();
+        document.getElementById('lblRowCount').textContent = `${dataset.length} total rows`;
+    };
+    reader.readAsText(file);
+});
 
-  showMsg('ok', `✔ "${name}" loaded — ${dataset.length} rows, ${header.length} columns.`);
-  show('sec-table'); show('sec-train');
-  renderDataTable();
-  document.getElementById('lblRowCount').textContent = `${dataset.length} total rows`;
-
-  // Reset
-  modelTrained = false;
-  hide('sec-predict');
-  document.getElementById('computationArea').innerHTML = '';
-  document.getElementById('finalModelArea').innerHTML = '';
-  hide('finalModelArea');
-  document.getElementById('accuracyArea').innerHTML = '';
-  hide('accuracyArea');
-}
-
-function showMsg(type, msg) {
-  const el = document.getElementById('uploadMsg');
-  el.className = `upload-msg ${type}`;
-  el.textContent = msg;
-  el.classList.remove('hidden');
-}
-
-//  HISTORICAL DATA TABLE (10 rows default)
+// HISTORICAL DATA TABLE 
 function renderDataTable() {
-  const sel  = document.getElementById('selRows').value;
-  const rows = sel === 'all' ? dataset : dataset.slice(0, parseInt(sel));
-  const means = computeMeans();
-
-  let html = `<table class="data-tbl"><thead><tr><th>#</th>`;
-  FEATURES.forEach((f,i) => {
-    html += `<th>${f}<br><small>(x${SUB[i]})</small></th>`;
-  });
-  html += `<th class="col-y">Outcome<br><small>(y)</small></th></tr></thead><tbody>`;
-
-  rows.forEach((r, i) => {
-    html += `<tr><td>${i+1}</td>`;
-    FEATURES.forEach(f => html += `<td>${r[f]}</td>`);
-    html += `<td class="col-y">${r['Outcome']}</td></tr>`;
-  });
-
-  html += `<tr class="row-mean"><td>Mean</td>`;
-  FEATURES.forEach(f => html += `<td>${means[f].toFixed(4)}</td>`);
-  html += `<td class="col-y">${means['Outcome'].toFixed(4)}</td></tr>`;
-  html += `</tbody></table>`;
-
-  document.getElementById('dataTableArea').innerHTML = html;
-}
-
-//  HELPERS
-function computeMeans() {
-  const cols = [...FEATURES, 'Outcome'];
-  const means = {};
-  cols.forEach(c => { means[c] = dataset.reduce((s,r) => s + r[c], 0) / dataset.length; });
-  return means;
-}
-function fmt(n)  { return n.toFixed(4); }
-function fmt2(n) { return n.toFixed(4); }
-
-//  COMPUTE MODEL
-function computeModel() {
-  if (dataset.length === 0) return;
-  document.getElementById('btnTrain').disabled = true;
-
-  const means = computeMeans();
-  const yBar  = means['Outcome'];
-  const area  = document.getElementById('computationArea');
-  area.innerHTML = '';
-
-  modelSlopes      = [];
-  modelIntercepts  = [];
-  featureRows      = [];
-
-  FEATURES.forEach((feat, fi) => {
-    const xBar = means[feat];
-    const xSub = `x${SUB[fi]}`;
-    const xBarSub = XBAR[fi];
-
-    let sumXY = 0, sumX2 = 0;
-    const rows = dataset.map(r => {
-      const x    = r[feat];
-      const y    = r['Outcome'];
-      const dX   = x - xBar;
-      const dY   = y - yBar;
-      const dXdY = dX * dY;
-      const dX2  = dX * dX;
-      sumXY += dXdY;
-      sumX2 += dX2;
-      return { x, y, dX, dY, dXdY, dX2 };
+    const sel = document.getElementById('selRows').value;
+    const rows = sel === 'all' ? dataset : dataset.slice(0, parseInt(sel));
+    
+    const means = {};
+    [...FEATURES, 'Outcome'].forEach(col => {
+        const sum = dataset.reduce((a, b) => a + (b[col] || 0), 0);
+        means[col] = sum / dataset.length;
     });
 
-    featureRows.push(rows);
+    let html = `<table class="data-tbl"><thead><tr><th>#</th>`;
+    FEATURES.forEach((f, i) => html += `<th>${f}<br><small>(x${SUB[i]})</small></th>`);
+    html += `<th class="col-y">Outcome<br><small>(y)</small></th></tr></thead><tbody>`;
 
-    const m = sumX2 !== 0 ? sumXY / sumX2 : 0;
-    const b = yBar - m * xBar;
-    modelSlopes.push(m);
-    modelIntercepts.push(b);
+    rows.forEach((r, i) => {
+        html += `<tr><td>${i+1}</td>`;
+        FEATURES.forEach(f => html += `<td>${r[f]}</td>`);
+        html += `<td class="col-y">${r['Outcome']}</td></tr>`;
+    });
 
-    // Render table showing first 10 rows only
-    area.innerHTML += buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sumX2, m, b, 10);
-  });
+    html += `<tr class="row-mean"><td>Mean</td>`;
+    FEATURES.forEach(f => html += `<td>${means[f].toFixed(4)}</td>`);
+    html += `<td class="col-y">${means['Outcome'].toFixed(4)}</td></tr></tbody></table>`;
 
-  // Overall intercept — average of all b's
-  modelB = modelIntercepts.reduce((s,v) => s+v, 0) / modelIntercepts.length;
-
-  // Overall intercept box
-  const bLabels = modelIntercepts.map((_,i) => `b${SUB[i]}`).join(' + ');
-  const bValues = modelIntercepts.map(b => fmt(b)).join(' + ');
-
-  let finalHtml = `
-  <div class="overall-box">
-    <div class="overall-title">Computation of the Overall Y-Intercept</div>
-    <div class="overall-inner">
-      <div class="formula-box">
-        b = (${bLabels}) / ${FEATURES.length}<br>
-        b = (${bValues}) / ${FEATURES.length}<br>
-        <strong>b = ${fmt(modelB)}</strong>
-      </div>
-    </div>
-  </div>`;
-
-  // Final model
-  const eqParts = FEATURES.map((f,i) => `(${fmt(modelSlopes[i])})x${SUB[i]}`).join(' + ');
-  finalHtml += `
-  <div class="final-model-box" style="margin-top:20px">
-    <div class="final-model-title">Final Multi-Variate Model</div>
-    <div class="final-model-inner">
-      <div class="formula-box">
-        ŷ = m₁x₁ + m₂x₂ + m₃x₃ + m₄x₄ + m₅x₅ + m₆x₆ + m₇x₇ + m₈x₈ + b<br><br>
-        ŷ = ${eqParts} + ${fmt(modelB)}<br><br>
-        <small style="color:#555">Sigmoid applied to ŷ → σ(ŷ) = 1 / (1 + e<sup>−ŷ</sup>) — if σ(ŷ) ≥ 0.5 → Predicted 1 (Diabetes), else → 0</small>
-      </div>
-    </div>
-  </div>`;
-
-  const finalArea = document.getElementById('finalModelArea');
-  finalArea.innerHTML = finalHtml;
-  show('finalModelArea');
-
-  const allRaw = dataset.map(r => FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB);
-  rawMean = allRaw.reduce((s,v) => s+v, 0) / allRaw.length;
-  rawStd  = Math.sqrt(allRaw.reduce((s,v) => s + (v - rawMean)**2, 0) / allRaw.length) || 1;
-
-  buildAccuracyTable();
-
-  modelTrained = true;
-  show('sec-predict');
-  document.getElementById('btnTrain').disabled = false;
+    document.getElementById('dataTableArea').innerHTML = html;
 }
 
-//  BUILD ONE FEATURE TABLE (PDF columns)
-function buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sumX2, m, b, limit) {
-  const showing = limit === 'all' ? rows : rows.slice(0, limit);
-  const hasMore = rows.length > 10;
-  const btnId   = `btn-more-${fi}`;
+// FEATURE COMPUTATION
+function computeModel() {
+    if (dataset.length === 0) return;
+    const area = document.getElementById('computationArea');
+    area.innerHTML = '';
+    
+    const yVals = dataset.map(r => r['Outcome']);
+    const yBar = yVals.reduce((a, b) => a + b, 0) / yVals.length;
+    
+    modelSlopes = [];
+    modelIntercepts = [];
 
-  let html = `<div class="comp-block" id="comp-block-${fi}">`;
-  html += `<div class="comp-title">
-    <span>Feature: <strong>${feat}</strong> &nbsp;(${xSub})</span>
-    <span class="slope-badge">m${SUB[fi]} = ${fmt(m)}</span>
-  </div>`;
+    FEATURES.forEach((feat, fi) => {
+        const xVals = dataset.map(r => r[feat]);
+        const xBar = xVals.reduce((a, b) => a + b, 0) / xVals.length;
+        
+        let sumXY = 0;
+        let sumX2 = 0;
+        let rowsHtml = '';
 
-  html += `<table class="comp-tbl"><thead><tr>
-    <th>${xSub}</th>
-    <th>y</th>
-    <th>${xSub} − ${xBarSub}</th>
-    <th>y − ȳ</th>
-    <th>(${xSub} − ${xBarSub})(y − ȳ)</th>
-    <th>(${xSub} − ${xBarSub})²</th>
-  </tr></thead><tbody id="comp-tbody-${fi}">`;
+        for (let i = 0; i < dataset.length; i++) {
+            const dx = xVals[i] - xBar;
+            const dy = yVals[i] - yBar;
+            sumXY += dx * dy;
+            sumX2 += dx * dx;
+            
+            if (i < 10) {
+                rowsHtml += `<tr>
+                    <td>${fmt(xVals[i])}</td><td>${fmt(yVals[i])}</td>
+                    <td>${fmt(dx)}</td><td>${fmt(dy)}</td>
+                    <td>${fmt(dx * dy)}</td><td>${fmt(dx * dx)}</td>
+                </tr>`;
+            }
+        }
+        
+        const m = sumX2 !== 0 ? sumXY / sumX2 : 0;
+        const b = yBar - (m * xBar);
+        modelSlopes.push(m);
+        modelIntercepts.push(b);
 
-  showing.forEach(r => {
-    html += `<tr>
-      <td>${fmt2(r.x)}</td>
-      <td>${fmt2(r.y)}</td>
-      <td>${fmt(r.dX)}</td>
-      <td>${fmt(r.dY)}</td>
-      <td>${fmt(r.dXdY)}</td>
-      <td>${fmt(r.dX2)}</td>
-    </tr>`;
-  });
+        area.innerHTML += `
+            <div class="comp-block">
+                <div class="comp-title">
+                    <span>Feature: <strong>${feat}</strong> (x${SUB[fi]})</span>
+                    <div class="slope-badge">m${SUB[fi]} = ${fmt(m)}</div>
+                </div>
+                <table class="comp-tbl">
+                    <thead><tr><th>x${SUB[fi]}</th><th>y</th><th>x-x̄</th><th>y-ȳ</th><th>(x-x̄)(y-ȳ)</th><th>(x-x̄)²</th></tr></thead>
+                    <tbody>
+                        ${rowsHtml}
+                        <tr class="row-mean">
+                            <td>${fmt(xBar)}<br><small>x̄</small></td>
+                            <td>${fmt(yBar)}<br><small>ȳ</small></td>
+                            <td></td><td></td>
+                            <td>${fmt(sumXY)}<br><small>Total</small></td>
+                            <td>${fmt(sumX2)}<br><small>Total</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="intercept-row">Y-Intercept b${SUB[fi]} = ${fmt(b)}</div>
+            </div>`;
+    });
 
-  // Mean / Total row
-  html += `<tr class="row-mean">
-    <td>${fmt2(xBar)}<br><small>${xBarSub}</small></td>
-    <td>${fmt2(yBar)}<br><small>ȳ</small></td>
-    <td></td><td></td>
-    <td><strong>${fmt(sumXY)}</strong><br><small>Total</small></td>
-    <td><strong>${fmt(sumX2)}</strong><br><small>Total</small></td>
-  </tr>`;
-  html += `</tbody></table>`;
+    modelB = modelIntercepts.reduce((a, b) => a + b, 0) / modelIntercepts.length;
+    
 
-  // Show more/less button
-  if (hasMore) {
-    const isAll = limit === 'all';
-    html += `<div class="show-more-wrap">
-      <button class="btn-show-more" id="${btnId}" onclick="toggleFeatureRows(${fi}, this)">
-        ${isAll ? `▲ Show Less (10 rows)` : `▼ Show All ${rows.length} Rows`}
-      </button>
-    </div>`;
-  }
+    const rawScores = dataset.map(r => FEATURES.reduce((acc, f, i) => acc + (modelSlopes[i] * r[f]), 0) + modelB);
+    rawMean = rawScores.reduce((a, b) => a + b, 0) / rawScores.length;
+    rawStd = Math.sqrt(rawScores.map(v => Math.pow(v - rawMean, 2)).reduce((a, b) => a + b, 0) / dataset.length) || 1;
 
-  // Y-Intercept line
-  html += `<div class="intercept-row">
-    Y-Intercept: &nbsp; b${SUB[fi]} = ȳ − m${SUB[fi]} · ${xBarSub}
-    &nbsp;=&nbsp; ${fmt2(yBar)} − (${fmt(m)})(${fmt2(xBar)})
-    &nbsp;=&nbsp; <strong>${fmt(b)}</strong>
-  </div>`;
-  html += `</div>`;
-
-  return html;
+    renderFinalModelUI();
+    buildAccuracyTable();
+    show('sec-predict');
+    show('finalModelArea');
+    modelTrained = true;
 }
 
-//  TOGGLE SHOW MORE / LESS ROWS
-function toggleFeatureRows(fi, btn) {
-  const feat    = FEATURES[fi];
-  const xSub    = `x${SUB[fi]}`;
-  const xBarSub = XBAR[fi];
-  const means   = computeMeans();
-  const xBar    = means[feat];
-  const yBar    = means['Outcome'];
-  const rows    = featureRows[fi];
-  const m       = modelSlopes[fi];
-  const b       = modelIntercepts[fi];
-  let   sumXY   = rows.reduce((s,r) => s+r.dXdY, 0);
-  let   sumX2   = rows.reduce((s,r) => s+r.dX2, 0);
+// OVERALL MODEL & ACCURACY 
+function renderFinalModelUI() {
+    const bSumStr = modelIntercepts.map(b => fmt(b)).join(' + ');
+    const eqParts = FEATURES.map((f, i) => `(${fmt(modelSlopes[i])})x${SUB[i]}`).join(' + ');
 
-  const isExpanded = btn.textContent.includes('Less');
-  const newLimit   = isExpanded ? 10 : 'all';
-
-  const block = document.getElementById(`comp-block-${fi}`);
-  const tmp   = document.createElement('div');
-  tmp.innerHTML = buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sumX2, m, b, newLimit);
-  block.replaceWith(tmp.firstElementChild);
+    document.getElementById('finalModelArea').innerHTML = `
+        <div class="overall-box">
+            <div class="overall-title">Computation of the Overall Y-Intercept</div>
+            <div class="overall-inner"><div class="formula-box">b = (${bSumStr}) / 8 = ${fmt(modelB)}</div></div>
+        </div>
+        <div class="final-model-box" style="margin-top:24px">
+            <div class="final-model-title">Final Multivariate Model (ŷ)</div>
+            <div class="final-model-inner"><div class="formula-box">ŷ = ${eqParts} + ${fmt(modelB)}</div></div>
+        </div>`;
 }
 
-//  ACCURACY TABLE 
 function buildAccuracyTable() {
-  const preds = dataset.map(r => {
-    const raw    = FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB;
-    const prob   = sigmoid((raw - rawMean) / rawStd);
-    const pred   = prob >= 0.5 ? 1 : 0;
-    const actual = r['Outcome'];
-    return { raw, prob, pred, actual, match: pred === actual };
-  });
+    let correct = 0;
+    const total = dataset.length;
+    
+    const results = dataset.map((r) => {
+        let raw = FEATURES.reduce((acc, f, j) => acc + (r[f] * modelSlopes[j]), 0) + modelB;
+        let z = (raw - rawMean) / rawStd;
+        let sigmoid = 1 / (1 + Math.exp(-z));
+        let pred = sigmoid >= 0.5 ? 1 : 0;
+        if (pred === parseInt(r['Outcome'])) correct++;
+        return { ...r, raw, sigmoid, pred, match: pred === parseInt(r['Outcome']) };
+    });
 
-  window._preds = preds;
-  const correct = preds.filter(p => p.match).length;
-  const acc     = (correct / preds.length * 100).toFixed(2);
+    const accuracy = (correct / total) * 100;
 
-  let html = `<div class="accuracy-block">
-    <div class="accuracy-header">
-      <span>Prediction Results vs Actual Outcome</span>
-      <span>Accuracy: ${acc}% &nbsp;(${correct}/${preds.length} correct)</span>
-    </div>
-    <div class="accuracy-stats">
-      <div class="stat-item"><div class="stat-label">Total Samples</div><div class="stat-value">${preds.length}</div></div>
-      <div class="stat-item"><div class="stat-label">Correct</div><div class="stat-value">${correct}</div></div>
-      <div class="stat-item"><div class="stat-label">Incorrect</div><div class="stat-value">${preds.length - correct}</div></div>
-      <div class="stat-item"><div class="stat-label">Accuracy</div><div class="stat-value">${acc}%</div></div>
-      <div class="stat-item"><div class="stat-label">Threshold</div><div class="stat-value" style="font-size:1rem">σ ≥ 0.5</div></div>
-    </div>
-    <div class="tbl-show-ctrl">
-      Show rows: <select onchange="filterPredTable(this.value)">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="all">All</option>
-      </select>
-    </div>
-    <div id="predTableInner"></div>
-  </div>`;
-
-  const accArea = document.getElementById('accuracyArea');
-  accArea.innerHTML = html;
-  show('accuracyArea');
-  renderPredTable(preds.slice(0, 10));
+    let html = `
+        <div class="accuracy-header" style="background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between;">
+            <span>Prediction Results vs Actual Outcome</span>
+            <span>Accuracy: ${accuracy.toFixed(2)}% (${correct}/${total} correct)</span>
+        </div>
+        <div class="accuracy-stats" style="display:flex; justify-content:space-around; padding:20px; background:#fafafa; border:1px solid #ccc; border-top:none;">
+            <div style="text-align:center;"><div style="font-size:11px;">TOTAL</div><div style="font-size:22px; font-weight:700;">${total}</div></div>
+            <div style="text-align:center;"><div style="font-size:11px;">CORRECT</div><div style="font-size:22px; font-weight:700;">${correct}</div></div>
+            <div style="text-align:center;"><div style="font-size:11px;">ACCURACY</div><div style="font-size:22px; font-weight:700;">${accuracy.toFixed(2)}%</div></div>
+        </div>
+        <div class="tbl-scroll" style="overflow-x:auto; margin-top:10px;"><table class="data-tbl" style="min-width:1200px;">
+            <thead><tr><th>#</th>${FEATURES.map(f => `<th>${f.toUpperCase()}</th>`).join('')}<th>ACTUAL</th><th>ŷ SCORE</th><th>SIGMOID</th><th>PRED</th></tr></thead>
+            <tbody>${results.slice(0, 10).map((r, i) => `<tr><td>${i+1}</td>${FEATURES.map(f => `<td>${r[f]}</td>`).join('')}<td>${r.Outcome}</td><td>${fmt(r.raw)}</td><td>${fmt(r.sigmoid)}</td><td>${r.pred}</td></tr>`).join('')}</tbody>
+        </table></div>`;
+    document.getElementById('accuracyArea').innerHTML = html;
+    show('accuracyArea');
 }
 
-function filterPredTable(val) {
-  const data = window._preds;
-  const rows = val === 'all' ? data : data.slice(0, parseInt(val));
-  renderPredTable(rows);
-}
-
-function renderPredTable(rows) {
-  // Column headers: #, x₁, x₂ ... x₈, Actual (y), Raw Score, Predicted, Match
-  let html = `<table class="pred-tbl"><thead><tr>
-    <th>#</th>`;
-  FEATURES.forEach((f,i) => html += `<th>${f}<br><small>(x${SUB[i]})</small></th>`);
-  html += `<th>Actual<br><small>(y)</small></th><th>Raw Score<br><small>(ŷ)</small></th><th>Sigmoid<br><small>σ(ŷ)</small></th><th>Predicted</th><th>Match</th>
-  </tr></thead><tbody>`;
-
-  rows.forEach((p) => {
-    const idx = window._preds.indexOf(p);
-    html += `<tr>`;
-    html += `<td>${idx + 1}</td>`;
-    FEATURES.forEach(f => html += `<td>${dataset[idx][f]}</td>`);
-    html += `<td><strong>${p.actual}</strong></td>`;
-    html += `<td class="raw-score">${p.raw.toFixed(4)}</td>`;
-    html += `<td class="raw-score">${p.prob.toFixed(4)}</td>`;
-    html += `<td><strong>${p.pred}</strong></td>`;
-    html += `<td class="${p.match ? 'match-yes' : 'match-no'}">${p.match ? '✔ Yes' : '✗ No'}</td>`;
-    html += `</tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('predTableInner').innerHTML = html;
-}
-
-//  MANUAL PREDICTION
+// FINAL PREDICTION
 function makePrediction() {
-  if (!modelTrained) { alert('Please compute the model first.'); return; }
-  const ids  = ['p1','p2','p3','p4','p5','p6','p7','p8'];
-  const vals = ids.map(id => parseFloat(document.getElementById(id).value));
-  if (vals.some(isNaN)) { alert('Please fill in all 8 input fields.'); return; }
+    if (!modelTrained) return;
+    const inputs = [];
+    for (let i = 1; i <= 8; i++) {
+        let v = parseFloat(document.getElementById(`p${i}`).value);
+        if (isNaN(v)) { alert("Please fill all fields"); return; }
+        inputs.push(v);
+    }
 
-  const raw     = FEATURES.reduce((s,_,i) => s + modelSlopes[i] * vals[i], 0) + modelB;
-  const prob    = sigmoid((raw - rawMean) / rawStd);
-  const outcome = prob >= 0.5 ? 1 : 0;
+    let subScores = FEATURES.map((f, i) => inputs[i] * modelSlopes[i]);
+    let rawScore = subScores.reduce((a, b) => a + b, 0) + modelB;
+    let z = (rawScore - rawMean) / rawStd;
+    let sigmoid = 1 / (1 + Math.exp(-z));
+    let finalPred = sigmoid >= 0.5 ? 1 : 0;
 
-  const parts   = FEATURES.map((f,i) => `(${fmt(modelSlopes[i])})(${vals[i]})`);
-  const numeric = FEATURES.map((_,i) => (modelSlopes[i] * vals[i]).toFixed(4));
+    document.getElementById('predFormula').innerHTML = `
+        <div style="font-family: monospace; line-height: 1.6;">
+            <strong>Solution Breakdown:</strong><br><br>
+            ŷ = Σ(mₙ * xₙ) + b<br>
+            ŷ = ${subScores.map(s => fmt(s)).join(' + ')} + ${fmt(modelB)}<br>
+            <strong>ŷ = ${fmt(rawScore)}</strong><br><br>
+            Centered z = ${fmt(z)}<br>
+            σ(z) = ${fmt(sigmoid)}<br>
+            Result: <strong>${finalPred}</strong>
+        </div>
+    `;
 
-  let formulaHtml = `<strong>Solution:</strong><br><br>`;
-  formulaHtml += `ŷ = m₁x₁ + m₂x₂ + m₃x₃ + m₄x₄ + m₅x₅ + m₆x₆ + m₇x₇ + m₈x₈ + b<br><br>`;
-  formulaHtml += `ŷ = ${parts.join(' + ')} + ${fmt(modelB)}<br><br>`;
-  formulaHtml += `ŷ = ${numeric.join(' + ')} + ${fmt(modelB)}<br><br>`;
-  formulaHtml += `<strong>ŷ = ${raw.toFixed(4)}</strong><br><br>`;
-  formulaHtml += `Centered z = (${raw.toFixed(4)} − ${rawMean.toFixed(4)}) / ${rawStd.toFixed(4)} = <strong>${((raw-rawMean)/rawStd).toFixed(4)}</strong><br><br>`;
-  formulaHtml += `σ(z) = 1 / (1 + e<sup>−z</sup>) = <strong>${prob.toFixed(4)}</strong><br><br>`;
-  formulaHtml += `<small>Since σ(z) = ${prob.toFixed(4)} ${prob >= 0.5 ? '≥' : '<'} 0.5 → Predicted = <strong>${outcome}</strong></small>`;
-
-  document.getElementById('predFormula').innerHTML = formulaHtml;
-  document.getElementById('predAnswer').innerHTML  = `
-    <span class="ans-number">${outcome}</span>
-    <span class="ans-label">${outcome === 0 ? '= No Diabetes' : '= Has Diabetes'}</span>
-  `;
-  show('predResult');
+    document.getElementById('predAnswer').innerHTML = `
+        <div style="text-align:center; padding: 20px; font-size: 24px; font-weight: bold; background: #e6f4f1; border: 2px solid #0d6e56; color: #0d6e56;">
+            ${finalPred}<br>
+            <span style="font-size: 16px;">= ${finalPred === 1 ? 'Diabetes' : 'No Diabetes'}</span>
+        </div>
+    `;
+    show('predResult');
 }
-
-//  HELPERS
-function show(id) { document.getElementById(id).classList.remove('hidden'); }
-function hide(id) { document.getElementById(id).classList.add('hidden'); }
