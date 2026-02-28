@@ -1,7 +1,3 @@
-// =============================================
-//   MULTIVARIATE REGRESSION — script.js
-//   Manual slope-intercept method (PDF style)
-// =============================================
 
 const FEATURES = [
   'Pregnancies','Glucose','BloodPressure','SkinThickness',
@@ -16,20 +12,16 @@ let modelIntercepts = [];
 let modelB        = 0;
 let modelTrained  = false;
 
-// Sigmoid function — squeezes any value into 0–1 range
+
 function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
 
-// We center raw scores around 0 before sigmoid so predictions spread across 0 and 1
-// rawMean is computed after model training
+
 let rawMean = 0;
 let rawStd  = 1;
 
-// ── per-feature full row data (for show-more) ──
-let featureRows = [];   // featureRows[fi] = array of row objects
+let featureRows = [];   
 
-// ───────────────────────────────────────────
 //  CSV UPLOAD
-// ───────────────────────────────────────────
 const fileInput  = document.getElementById('csvFile');
 const uploadArea = document.getElementById('uploadArea');
 
@@ -84,9 +76,7 @@ function showMsg(type, msg) {
   el.classList.remove('hidden');
 }
 
-// ───────────────────────────────────────────
 //  HISTORICAL DATA TABLE (10 rows default)
-// ───────────────────────────────────────────
 function renderDataTable() {
   const sel  = document.getElementById('selRows').value;
   const rows = sel === 'all' ? dataset : dataset.slice(0, parseInt(sel));
@@ -104,7 +94,6 @@ function renderDataTable() {
     html += `<td class="col-y">${r['Outcome']}</td></tr>`;
   });
 
-  // Mean row (always shown regardless of filter)
   html += `<tr class="row-mean"><td>Mean</td>`;
   FEATURES.forEach(f => html += `<td>${means[f].toFixed(4)}</td>`);
   html += `<td class="col-y">${means['Outcome'].toFixed(4)}</td></tr>`;
@@ -113,9 +102,7 @@ function renderDataTable() {
   document.getElementById('dataTableArea').innerHTML = html;
 }
 
-// ───────────────────────────────────────────
 //  HELPERS
-// ───────────────────────────────────────────
 function computeMeans() {
   const cols = [...FEATURES, 'Outcome'];
   const means = {};
@@ -125,9 +112,7 @@ function computeMeans() {
 function fmt(n)  { return n.toFixed(4); }
 function fmt2(n) { return n.toFixed(4); }
 
-// ───────────────────────────────────────────
 //  COMPUTE MODEL
-// ───────────────────────────────────────────
 function computeModel() {
   if (dataset.length === 0) return;
   document.getElementById('btnTrain').disabled = true;
@@ -207,7 +192,6 @@ function computeModel() {
   finalArea.innerHTML = finalHtml;
   show('finalModelArea');
 
-  // Compute mean and std of raw scores so we can center before sigmoid
   const allRaw = dataset.map(r => FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB);
   rawMean = allRaw.reduce((s,v) => s+v, 0) / allRaw.length;
   rawStd  = Math.sqrt(allRaw.reduce((s,v) => s + (v - rawMean)**2, 0) / allRaw.length) || 1;
@@ -219,9 +203,7 @@ function computeModel() {
   document.getElementById('btnTrain').disabled = false;
 }
 
-// ───────────────────────────────────────────
 //  BUILD ONE FEATURE TABLE (PDF columns)
-// ───────────────────────────────────────────
 function buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sumX2, m, b, limit) {
   const showing = limit === 'all' ? rows : rows.slice(0, limit);
   const hasMore = rows.length > 10;
@@ -233,7 +215,6 @@ function buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sum
     <span class="slope-badge">m${SUB[fi]} = ${fmt(m)}</span>
   </div>`;
 
-  // TABLE — columns exactly like PDF
   html += `<table class="comp-tbl"><thead><tr>
     <th>${xSub}</th>
     <th>y</th>
@@ -285,9 +266,7 @@ function buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sum
   return html;
 }
 
-// ───────────────────────────────────────────
 //  TOGGLE SHOW MORE / LESS ROWS
-// ───────────────────────────────────────────
 function toggleFeatureRows(fi, btn) {
   const feat    = FEATURES[fi];
   const xSub    = `x${SUB[fi]}`;
@@ -304,16 +283,13 @@ function toggleFeatureRows(fi, btn) {
   const isExpanded = btn.textContent.includes('Less');
   const newLimit   = isExpanded ? 10 : 'all';
 
-  // Replace the entire comp-block
   const block = document.getElementById(`comp-block-${fi}`);
   const tmp   = document.createElement('div');
   tmp.innerHTML = buildFeatureTable(fi, feat, xSub, xBarSub, xBar, yBar, rows, sumXY, sumX2, m, b, newLimit);
   block.replaceWith(tmp.firstElementChild);
 }
 
-// ───────────────────────────────────────────
-//  ACCURACY TABLE (dynamic threshold)
-// ───────────────────────────────────────────
+//  ACCURACY TABLE 
 function buildAccuracyTable() {
   const preds = dataset.map(r => {
     const raw    = FEATURES.reduce((s,f,i) => s + modelSlopes[i] * r[f], 0) + modelB;
@@ -387,9 +363,7 @@ function renderPredTable(rows) {
   document.getElementById('predTableInner').innerHTML = html;
 }
 
-// ───────────────────────────────────────────
 //  MANUAL PREDICTION
-// ───────────────────────────────────────────
 function makePrediction() {
   if (!modelTrained) { alert('Please compute the model first.'); return; }
   const ids  = ['p1','p2','p3','p4','p5','p6','p7','p8'];
@@ -420,8 +394,6 @@ function makePrediction() {
   show('predResult');
 }
 
-// ───────────────────────────────────────────
 //  HELPERS
-// ───────────────────────────────────────────
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
